@@ -20,6 +20,8 @@ class Base(MutableMapping):
         self.__db = LSM(self.__filename, **lsm_kwargs)
         self.__closed = False
 
+        self._keys_cache = set()
+
     @property
     def _db(self):
         if self.__closed:
@@ -33,12 +35,16 @@ class Base(MutableMapping):
                 yield self._decode_key(key)
 
     def __len__(self):
+        return len(self._keys_cache)
         # FIXME: It's so slow
         with self.__lock:
             return sum(1 for _ in self._db.keys())
 
     def __contains__(self, key):
         return self._encode_key(key) in self._db
+
+    def keys(self):
+        return list(self._keys_cache)
 
     def get(self, key, default=None):
         try:
@@ -60,13 +66,17 @@ class Base(MutableMapping):
                 try:
                     self._db[_key] = _value
                     error = False
+                    self._keys_cache.add(_key)
                 except Exception as e:
                     if e.args[0] != "Busy":
                         raise
                     continue
 
     def __delitem__(self, key):
-        return self.delete(key)
+        result = self.delete(key)
+        if result:
+            self._keys_cache.remove(key)
+        return result
 
     def delete(self, key):
         with self.__lock:
@@ -74,6 +84,7 @@ class Base(MutableMapping):
             while error:
                 try:
                     self._db.delete(self._encode_key(key))
+                    self._keys_cache.remove(key)
                     error = False
                 except Exception as e:
                     if e.args[0] != "Busy":
