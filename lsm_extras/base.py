@@ -120,6 +120,12 @@ class Base(MutableMapping):
 
         self.close()
 
+        try:
+            pass
+            os.unlink(self.filename)
+        except:
+            pass
+
     def sync(self):
         with self.__lock:
             self._db.flush()
