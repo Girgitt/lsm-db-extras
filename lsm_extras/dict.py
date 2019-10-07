@@ -8,9 +8,11 @@ except ImportError:
 
 class LSMDict(Base):
     def _encode_value(self, value):
+        return value
         return pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)
 
     def _decode_value(self, value):
+        return value
         return pickle.loads(value)
 
     _encode_key = _encode_value
